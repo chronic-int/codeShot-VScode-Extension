@@ -54,8 +54,9 @@ function renderCode(code: string, language: string, startLine: number, theme: st
 
         lines.forEach((line, index) => {
             const currentLineNumber = startLine + index;
-            const lineContent = line || ' ';
-            finalHtml += `<div class="line" style="display: flex; align-items: flex-start;">
+            // Use non-breaking space for empty lines to maintain height
+            const lineContent = line || '&nbsp;';
+            finalHtml += `<div class="line">
                 <span class="line-number">${currentLineNumber}</span>
                 <span class="line-content">${lineContent}</span>
             </div>`;

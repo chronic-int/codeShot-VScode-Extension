@@ -1,124 +1,142 @@
-# 🛠️ Fix Renderer Initialization — Shiki Not Defined
+# 🧩 CodeShot — A4 Layout & Save Pipeline Fix
 
-## 🎯 Problem
+## 🎯 Objective
 
-The preview renderer fails to initialize with the error:
+Restore the A4 document layout and ensure screenshot saving works reliably.
 
-```
-shiki is not defined
-```
-
-This occurs because VS Code Webviews run in a browser-like sandbox and cannot directly use Node-style imports unless properly bundled.
+The preview must look like a printable document, not an editor panel.
 
 ---
 
-# ✅ Goal
+# 🐞 Current Problems
 
-Ensure the syntax highlighting engine loads correctly inside the Webview environment without runtime errors.
-
----
-
-# 🧠 Root Cause
-
-Shiki is currently being referenced as a global or Node import, but:
-
-* Webviews do not support Node resolution
-* Dependencies must be bundled for browser execution
-* The renderer script is likely not compiled/bundled
+1. The A4 sheet is not visible (background is dark)
+2. Preview looks like editor instead of document
+3. Long lines scroll but A4 does not expand
+4. Save as PNG button does not trigger save dialog
 
 ---
 
-# 🛠️ Required Fix
+# ✅ 1️⃣ Restore A4 Document Layout
 
-## 1️⃣ Bundle the Webview Renderer
+## Requirements
 
-Use a bundler (recommended: **esbuild**) to produce a browser-compatible script.
+The preview must have 2 layers:
 
-The renderer entry file (example):
-
-```
-webview/renderer/index.ts
-```
-
-Must be bundled into:
-
-```
-webview/dist/renderer.js
-```
+1. VS Code background (outer container)
+2. White A4 page (inner container)
 
 ---
 
-## 2️⃣ Install Dependencies
+## A4 Container CSS
 
 ```
-npm install shiki
-npm install -D esbuild
+.a4-page {
+  background: #ffffff;
+  width: 794px;
+  margin: 24px auto;
+  padding: 40px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+}
 ```
+
+The page must always be white regardless of theme.
 
 ---
 
-## 3️⃣ Create Build Script
+# ✅ 2️⃣ Dynamic Page Expansion
 
-Add script:
+If code is long:
+
+### Vertical
+
+Page grows automatically
+
+### Horizontal
+
+Page width expands to fit longest line
+
+Implementation:
 
 ```
-"build:webview": "esbuild webview/renderer/index.ts --bundle --platform=browser --outfile=webview/dist/renderer.js"
+width: fit-content;
+min-width: 794px;
 ```
+
+This ensures:
+
+✔ No line clipping
+✔ No forced wrapping
+✔ Screenshot matches content
 
 ---
 
-## 4️⃣ Load Script in Webview HTML
+# ✅ 3️⃣ Code Container Rules
 
-Ensure the Webview HTML references the bundled file:
-
-```
-<script src="renderer.js"></script>
-```
-
-Use `webview.asWebviewUri` when constructing the path.
-
----
-
-## 5️⃣ Initialize Shiki Properly
-
-Inside renderer:
+Inside A4:
 
 ```
-import { getHighlighter } from "shiki"
-
-const highlighter = await getHighlighter({
-  theme: "vscode-dark"
-})
+white-space: pre;
+overflow: visible;
 ```
 
-Do not rely on global variables.
+The page itself handles size.
 
 ---
 
-## 6️⃣ Add Fallback
+# ✅ 4️⃣ Fix Save as PNG
 
-If highlighter fails:
+## Expected Flow
 
-Render plain text to avoid blank preview.
+Click Save →
 
----
-
-# 🧪 Validation Steps
-
-1. Open preview panel
-2. Check DevTools console (Webview)
-3. Confirm no “shiki not defined” error
-4. Confirm highlighted code appears
+1. Capture DOM
+2. Convert to PNG
+3. Send base64 to extension
+4. Open save dialog
+5. Write file
 
 ---
 
-# 🏁 Acceptance Criteria
+## Debug Checklist
 
-✔ Renderer loads without errors
-✔ Shiki initializes successfully
-✔ Preview renders highlighted code
-✔ No global undefined references
+Confirm:
+
+* Capture function returns image
+* postMessage sent with image
+* Extension receives message
+* showSaveDialog executes
+* File write completes
+
+Add logging at each step.
 
 ---
 
-# End of Fix Instruction
+# ✅ 5️⃣ Screenshot Target
+
+Important:
+
+Capture ONLY the A4 container
+NOT the whole webview
+
+---
+
+# 🧪 Acceptance Criteria
+
+✔ White A4 page visible
+✔ Code sits inside document layout
+✔ Page expands with long lines
+✔ No wrapping
+✔ Save dialog opens
+✔ PNG saved correctly
+✔ Screenshot matches preview
+
+---
+
+# 🏁 Final Requirement
+
+The preview must look like a printable code document ready for export.
+
+---
+
+# End Task
