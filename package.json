@@ -2,8 +2,9 @@
   "name": "codeshot",
   "displayName": "CodeShot",
   "description": "Capture beautiful code screenshots directly from VS Code.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "chronic-int",
+  "license": "ISC",
   "icon": "assets/logo.png",
   "engines": {
     "vscode": "^1.85.0"
@@ -12,8 +13,23 @@
     "type": "git",
     "url": "https://github.com/chronic-int/codeShot-VScode-Extension.git"
   },
+  "bugs": {
+    "url": "https://github.com/chronic-int/codeShot-VScode-Extension/issues"
+  },
+  "homepage": "https://github.com/chronic-int/codeShot-VScode-Extension#readme",
   "categories": [
+    "Visualization",
+    "Programming Languages",
     "Other"
+  ],
+  "keywords": [
+    "screenshot",
+    "capture",
+    "code",
+    "snaps",
+    "export",
+    "png",
+    "A4"
   ],
   "activationEvents": [],
   "main": "./out/extension/core/extension.js",
