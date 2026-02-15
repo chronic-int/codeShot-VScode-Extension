@@ -2,7 +2,7 @@
   "name": "codeshot",
   "displayName": "CodeShot",
   "description": "Capture beautiful code screenshots directly from VS Code.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "chronic-int",
   "license": "ISC",
   "icon": "assets/logo.png",
@@ -31,7 +31,9 @@
     "png",
     "A4"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:codeshot.capture"
+  ],
   "main": "./out/extension/core/extension.js",
   "contributes": {
     "commands": [
