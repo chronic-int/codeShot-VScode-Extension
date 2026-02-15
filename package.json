@@ -62,7 +62,8 @@
     "compile": "tsc -p ./ && npm run build:webview",
     "watch": "tsc -watch -p ./",
     "build:webview": "esbuild webview/main.ts --bundle --minify --platform=browser --outfile=webview/dist/main.js",
-    "lint": "eslint extension shared --ext ts"
+    "lint": "eslint extension shared --ext ts",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "20.x",
