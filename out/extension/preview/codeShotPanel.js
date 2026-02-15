@@ -67,7 +67,7 @@ class CodeShotPanel {
             this._panel.reveal(column ? column + 1 : vscode.ViewColumn.Two);
             return;
         }
-        this._panel = vscode.window.createWebviewPanel('codeshotPreview', 'CodeShot Preview', column ? column + 1 : vscode.ViewColumn.Two, {
+        this._panel = vscode.window.createWebviewPanel('codeshotPreview', 'CodeShotX Preview', column ? column + 1 : vscode.ViewColumn.Two, {
             enableScripts: true,
             localResourceRoots: [
                 vscode.Uri.joinPath(this._context.extensionUri, 'webview'),
@@ -78,9 +78,9 @@ class CodeShotPanel {
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
         this._panel.webview.onDidReceiveMessage(message => {
             const type = message.type || message.command;
-            console.log(`[CodeShot] Extension received command: ${type}`);
+            console.log(`[CodeShotX] Extension received command: ${type}`);
             if (type !== 'notify' && type !== 'ready') {
-                vscode.window.showInformationMessage(`CodeShot: Extension received '${type}' command.`);
+                vscode.window.showInformationMessage(`CodeShotX: Extension received '${type}' command.`);
             }
             switch (type) {
                 case 'ready':

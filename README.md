@@ -1,6 +1,6 @@
-# 📸 CodeShot
+# <img src="./assets/logo.png" width="32" height="32" alt="CodeShotX Logo"> CodeShotX — chronic
 
-**CodeShot** is a lightweight, high-performance VS Code extension designed to capture beautiful, high-fidelity code screenshots directly from your editor. It renders your code inside a professional A4-style layout with accurate line numbers and real-time updates.
+Capture beautiful, high-fidelity code screenshots directly from VS Code. 🚀 It renders your code inside a professional A4-style layout with accurate line numbers and real-time updates.
 
 ## ✨ Features
 

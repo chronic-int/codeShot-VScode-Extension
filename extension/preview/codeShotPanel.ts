@@ -37,7 +37,7 @@ export class CodeShotPanel {
 
         this._panel = vscode.window.createWebviewPanel(
             'codeshotPreview',
-            'CodeShot Preview',
+            'CodeShotX Preview',
             column ? column + 1 : vscode.ViewColumn.Two,
             {
                 enableScripts: true,
@@ -55,10 +55,10 @@ export class CodeShotPanel {
         this._panel.webview.onDidReceiveMessage(
             message => {
                 const type = message.type || message.command;
-                console.log(`[CodeShot] Extension received command: ${type}`);
+                console.log(`[CodeShotX] Extension received command: ${type}`);
 
                 if (type !== 'notify' && type !== 'ready') {
-                    vscode.window.showInformationMessage(`CodeShot: Extension received '${type}' command.`);
+                    vscode.window.showInformationMessage(`CodeShotX: Extension received '${type}' command.`);
                 }
 
                 switch (type) {

@@ -1,8 +1,8 @@
 {
-  "name": "codeshot",
-  "displayName": "CodeShot",
+  "name": "codeshotx-chronic",
+  "displayName": "CodeShotX - chronic",
   "description": "Capture beautiful code screenshots directly from VS Code.",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "chronic-int",
   "license": "ISC",
   "icon": "assets/logo.png",
