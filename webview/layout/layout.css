@@ -1,0 +1,51 @@
+:root {
+    --a4-width: 794px;
+    --bg-color: #f0f0f0;
+    --sheet-bg: #ffffff;
+    --shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#preview-container {
+    width: var(--a4-width);
+    background-color: var(--sheet-bg);
+    box-shadow: var(--shadow);
+    margin: 40px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.code-wrapper {
+    padding: 40px;
+}
+
+pre {
+    margin: 0;
+    background: transparent !important;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.shiki {
+    background-color: transparent !important;
+}
+
+.line-number {
+    display: inline-block;
+    width: 3.5em;
+    color: #858585;
+    text-align: right;
+    padding-right: 1.5em;
+    user-select: none;
+}
