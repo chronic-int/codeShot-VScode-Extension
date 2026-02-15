@@ -11,7 +11,6 @@ tsconfig.json
 extension/**
 shared/**
 webview/capture/**
-webview/layout/**
 webview/renderer/**
 webview/state/**
 webview/main.ts
