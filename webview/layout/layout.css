@@ -2,7 +2,7 @@
     --a4-width: 794px;
     --bg-color: #f0f0f0;
     --sheet-bg: #ffffff;
-    --shadow: 0 10px 30px rgba(0,0,0,0.1);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -33,8 +33,12 @@ body {
 pre {
     margin: 0;
     background: transparent !important;
-    font-size: 14px;
+    font-size: 16px;
+    /* Word 12pt equivalent */
     line-height: 1.5;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 .shiki {

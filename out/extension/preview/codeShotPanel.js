@@ -40,6 +40,7 @@ class CodeShotPanel {
     static currentPanel;
     _panel;
     _disposables = [];
+    _lastPayload;
     constructor(_context) {
         this._context = _context;
     }
@@ -61,7 +62,14 @@ class CodeShotPanel {
         this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
         this._panel.webview.onDidReceiveMessage(message => {
+            console.log('Extension received message:', message.command);
             switch (message.command) {
+                case 'ready':
+                    console.log('Webview is ready, resending last payload');
+                    if (this._lastPayload) {
+                        this.update(this._lastPayload);
+                    }
+                    break;
                 case 'capture':
                     this._handleCapture(message.data);
                     break;
@@ -69,7 +77,9 @@ class CodeShotPanel {
         }, null, this._disposables);
     }
     update(payload) {
+        this._lastPayload = payload;
         if (this._panel) {
+            console.log('Sending update to webview:', payload.language);
             this._panel.webview.postMessage({ command: 'update', payload });
         }
     }

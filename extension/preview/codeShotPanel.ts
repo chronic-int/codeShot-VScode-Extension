@@ -5,6 +5,7 @@ export class CodeShotPanel {
     public static currentPanel: CodeShotPanel | undefined;
     private _panel: vscode.WebviewPanel | undefined;
     private _disposables: vscode.Disposable[] = [];
+    private _lastPayload: PreviewPayload | undefined;
 
     constructor(private readonly _context: vscode.ExtensionContext) { }
 
@@ -37,7 +38,14 @@ export class CodeShotPanel {
 
         this._panel.webview.onDidReceiveMessage(
             message => {
+                console.log('Extension received message:', message.command);
                 switch (message.command) {
+                    case 'ready':
+                        console.log('Webview is ready, resending last payload');
+                        if (this._lastPayload) {
+                            this.update(this._lastPayload);
+                        }
+                        break;
                     case 'capture':
                         this._handleCapture(message.data);
                         break;
@@ -49,7 +57,9 @@ export class CodeShotPanel {
     }
 
     public update(payload: PreviewPayload) {
+        this._lastPayload = payload;
         if (this._panel) {
+            console.log('Sending update to webview:', payload.language);
             this._panel.webview.postMessage({ command: 'update', payload });
         }
     }
