@@ -26,6 +26,21 @@
 - Use the **Save as PNG** button to save the screenshot using the native VS Code save dialog.
 - The preview renders with a 2x pixel ratio for crisp quality.
 
+## 🛠️ Manual Installation
+
+If you have a `.vsix` file and want to install it manually:
+
+### 1. Build the VSIX
+If you are building from source, first run:
+```bash
+npm run package
+```
+This will generate a `codeshot-X.X.X.vsix` file in the root directory.
+
+### 2. Install in VS Code
+- **Method A (Command Palette)**: Press `Ctrl+Shift+P`, type `Install from VSIX`, and select the generated file.
+- **Method B (Extensions View)**: Open the **Extensions** view (`Ctrl+Shift+X`), click the **...** (Views and More Actions) menu in the top-right corner, and select **Install from VSIX...**.
+
 ## 🛠️ Technical Implementation
 
 - **Extension Host**: TypeScript
