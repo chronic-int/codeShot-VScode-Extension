@@ -99,33 +99,27 @@ export class CodeShotPanel {
 
     private _getHtmlForWebview(webview: vscode.Webview): string {
         const layoutCss = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'layout', 'layout.css'));
-        const rendererJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'renderer', 'renderer.js'));
-        const captureJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'capture', 'capture.js'));
-
-        // For simplicity in this environment, I'll read the file synchronously or use a placeholder
-        // In a real extension, you'd use fs.promises.readFile
-        const htmlPath = vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'webview.html');
-        // This is a placeholder for the actual file reading which I'll do via my tools
-        // but since I'm the one writing the files, I'll just hardcode the logic to return the template with replaced URIs.
+        const rendererJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'dist', 'renderer.js'));
+        const captureJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'dist', 'capture.js'));
 
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval';">
     <title>CodeShot Preview</title>
     <link rel="stylesheet" href="${layoutCss}">
     <style>
         /* Embedded Shiki styles or overrides */
-        .shiki { padding: 0; margin: 0; }
+        .shiki { padding: 0 !important; margin: 0 !important; background-color: transparent !important; }
+        .shiki code { background-color: transparent !important; }
     </style>
-    <script src="https://unpkg.com/shiki"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
 </head>
 <body>
     <div id="preview-container">
         <div class="code-wrapper" id="code-output">
-            <!-- Code will be rendered here -->
+            <div style="color: #666; font-style: italic;">Select code in the editor to see preview...</div>
         </div>
     </div>
 

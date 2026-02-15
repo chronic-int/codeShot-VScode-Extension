@@ -1,142 +1,124 @@
-# 🛠️ CodeShot — Fix & Enhancement Prompt
+# 🛠️ Fix Renderer Initialization — Shiki Not Defined
 
-## 🎯 Objective
+## 🎯 Problem
 
-Resolve rendering and preview issues so that the CodeShot preview accurately reflects the selected code exactly as it appears in the VS Code editor.
+The preview renderer fails to initialize with the error:
 
-The preview must be reliable, visually accurate, and ready for high-quality screenshots intended for insertion into Word documents.
+```
+shiki is not defined
+```
 
----
-
-# 🐞 Current Issues to Fix
-
-1. The code is not displayed in the preview panel
-2. Selecting code does not update the preview
-3. Live preview remains blank after selection
-4. Code formatting does not match the editor
-5. Theme colors are not applied
-6. Code is not rendered with consistent font size
+This occurs because VS Code Webviews run in a browser-like sandbox and cannot directly use Node-style imports unless properly bundled.
 
 ---
 
-# ✅ Expected Behavior
+# ✅ Goal
 
-## 1️⃣ Accurate Code Rendering
-
-The preview must display the selected code:
-
-* Exactly as it appears in the editor
-* Preserving indentation
-* Preserving spacing
-* Preserving line breaks
-
-No transformations or formatting changes.
+Ensure the syntax highlighting engine loads correctly inside the Webview environment without runtime errors.
 
 ---
 
-## 2️⃣ Real-Time Preview Update
+# 🧠 Root Cause
 
-When the user:
+Shiki is currently being referenced as a global or Node import, but:
 
-* Selects code
-* Changes selection
-* Edits the code
-
-The preview must update automatically (debounced ~120ms).
+* Webviews do not support Node resolution
+* Dependencies must be bundled for browser execution
+* The renderer script is likely not compiled/bundled
 
 ---
 
-## 3️⃣ Theme Synchronization
+# 🛠️ Required Fix
 
-The preview must use the **active VS Code theme colors**.
+## 1️⃣ Bundle the Webview Renderer
 
-This includes:
+Use a bundler (recommended: **esbuild**) to produce a browser-compatible script.
 
-* Syntax highlight tokens
-* Background tone
-* Foreground colors
+The renderer entry file (example):
 
-Use the same color mapping used by the editor.
+```
+webview/renderer/index.ts
+```
 
----
+Must be bundled into:
 
-## 4️⃣ Font Requirements
-
-The preview must render code with:
-
-* Monospaced font stack
-* Font size **12pt equivalent**
-
-Implementation detail:
-
-Use CSS font size that visually matches **Word size 12**
-(≈ 16px in most environments, adjust if needed for visual parity).
-
-This is critical for screenshots used in academic documents.
+```
+webview/dist/renderer.js
+```
 
 ---
 
-## 5️⃣ Line Structure Integrity
+## 2️⃣ Install Dependencies
 
-The layout must:
-
-* Align line numbers perfectly
-* Keep vertical spacing consistent
-* Match editor line height as closely as possible
-
----
-
-# 🧠 Technical Implementation Notes
-
-## Data Flow Validation
-
-Ensure:
-
-1. SelectionObserver correctly captures text
-2. Payload is sent to Webview
-3. Webview receives message
-4. Renderer updates DOM
-
-Add temporary logs if needed to confirm message flow.
+```
+npm install shiki
+npm install -D esbuild
+```
 
 ---
 
-## Rendering Engine
+## 3️⃣ Create Build Script
 
-Confirm that:
+Add script:
 
-* Syntax highlighting engine is initialized
-* Language is correctly detected
-* Tokens are applied before render
-
----
-
-## Fallback Behavior
-
-If highlighting fails:
-
-Render plain text (never blank).
+```
+"build:webview": "esbuild webview/renderer/index.ts --bundle --platform=browser --outfile=webview/dist/renderer.js"
+```
 
 ---
 
-# 🧪 Acceptance Criteria
+## 4️⃣ Load Script in Webview HTML
 
-The task is complete when:
+Ensure the Webview HTML references the bundled file:
 
-✔ Selecting code immediately shows it in preview
-✔ Preview matches editor structure exactly
-✔ Theme colors are visible
-✔ Font visually equals size 12 in Word
-✔ Live preview updates reliably
-✔ No blank preview states occur
+```
+<script src="renderer.js"></script>
+```
 
----
-
-# 🏁 Final Requirement
-
-The preview must feel **pixel-faithful to the editor**,
-so that screenshots can be used directly in documentation without adjustments.
+Use `webview.asWebviewUri` when constructing the path.
 
 ---
 
-# End of Prompt
+## 5️⃣ Initialize Shiki Properly
+
+Inside renderer:
+
+```
+import { getHighlighter } from "shiki"
+
+const highlighter = await getHighlighter({
+  theme: "vscode-dark"
+})
+```
+
+Do not rely on global variables.
+
+---
+
+## 6️⃣ Add Fallback
+
+If highlighter fails:
+
+Render plain text to avoid blank preview.
+
+---
+
+# 🧪 Validation Steps
+
+1. Open preview panel
+2. Check DevTools console (Webview)
+3. Confirm no “shiki not defined” error
+4. Confirm highlighted code appears
+
+---
+
+# 🏁 Acceptance Criteria
+
+✔ Renderer loads without errors
+✔ Shiki initializes successfully
+✔ Preview renders highlighted code
+✔ No global undefined references
+
+---
+
+# End of Fix Instruction

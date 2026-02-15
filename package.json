@@ -38,20 +38,24 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npm run build:webview",
     "watch": "tsc -watch -p ./",
+    "build:webview": "esbuild webview/renderer/index.ts --bundle --minify --platform=browser --outfile=webview/dist/renderer.js && esbuild webview/capture/index.ts --bundle --minify --platform=browser --outfile=webview/dist/capture.js",
     "lint": "eslint extension shared --ext ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "20.x",
+    "@types/prismjs": "^1.26.6",
+    "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
+    "esbuild": "^0.27.3",
     "eslint": "^8.54.0",
     "typescript": "^5.3.2"
   },
   "dependencies": {
-    "shiki": "^0.14.7",
-    "html-to-image": "^1.11.11"
+    "html-to-image": "^1.11.11",
+    "prismjs": "^1.30.0",
+    "shiki": "^0.14.7"
   }
 }
