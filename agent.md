@@ -1,141 +1,146 @@
-# 🧩 CodeShot — A4 Layout & Save Pipeline Fix
+# 🧩 CodeShot — Output Pipeline & Large Page Scroll Fix
 
 ## 🎯 Objective
 
-Restore the A4 document layout and ensure screenshot saving works reliably.
+Fix the screenshot export pipeline and improve usability when the A4 page becomes very large.
 
-The preview must look like a printable document, not an editor panel.
+The user must be able to:
 
----
-
-# 🐞 Current Problems
-
-1. The A4 sheet is not visible (background is dark)
-2. Preview looks like editor instead of document
-3. Long lines scroll but A4 does not expand
-4. Save as PNG button does not trigger save dialog
+* Save PNG reliably
+* Copy image to clipboard
+* Scroll when preview is larger than viewport
 
 ---
 
-# ✅ 1️⃣ Restore A4 Document Layout
+# 🐞 Current Issues
 
-## Requirements
-
-The preview must have 2 layers:
-
-1. VS Code background (outer container)
-2. White A4 page (inner container)
+1. Save as PNG button does not save file
+2. Copy to Clipboard does not copy image
+3. Large A4 pages overflow without proper scroll
 
 ---
 
-## A4 Container CSS
+# ✅ 1️⃣ Fix Save as PNG Pipeline
+
+## Required Flow
+
+1. User clicks **Save as PNG**
+2. Webview captures A4 container
+3. PNG base64 generated
+4. Message sent to extension
+5. Extension opens Save dialog
+6. File written successfully
+
+---
+
+## Implementation Requirements
+
+### Webview
+
+* Ensure capture function returns image
+* Use `postMessage({ type: "save", image })`
+
+### Extension Host
+
+Must handle message:
 
 ```
-.a4-page {
-  background: #ffffff;
-  width: 794px;
-  margin: 24px auto;
-  padding: 40px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+if (message.type === "save") {
+  const uri = await vscode.window.showSaveDialog(...)
+  await vscode.workspace.fs.writeFile(uri, buffer)
 }
 ```
 
-The page must always be white regardless of theme.
+---
+
+## Critical Checks
+
+✔ Ensure image string is not empty
+✔ Ensure message listener exists
+✔ Ensure async write is awaited
+✔ Add error logs
 
 ---
 
-# ✅ 2️⃣ Dynamic Page Expansion
+# ✅ 2️⃣ Fix Copy to Clipboard
 
-If code is long:
+## Expected Behavior
 
-### Vertical
+Clicking copy must place PNG image into system clipboard.
 
-Page grows automatically
+---
 
-### Horizontal
+## Implementation
 
-Page width expands to fit longest line
-
-Implementation:
+Must be handled in Extension Host (not Webview):
 
 ```
-width: fit-content;
-min-width: 794px;
+vscode.env.clipboard.writeBuffer(buffer)
 ```
+
+Webview sends:
+
+```
+postMessage({ type: "copy", image })
+```
+
+---
+
+## Important
+
+Do NOT use:
+
+❌ navigator.clipboard
+
+It does not support binary image reliably in Webviews.
+
+---
+
+# ✅ 3️⃣ Large Page Scroll Behavior
+
+When A4 page becomes larger than viewport:
+
+The preview container must allow scrolling.
+
+---
+
+## Layout Rules
+
+Outer container:
+
+```
+height: 100vh;
+overflow: auto;
+```
+
+A4 page remains centered.
 
 This ensures:
 
-✔ No line clipping
-✔ No forced wrapping
-✔ Screenshot matches content
+✔ Smooth navigation
+✔ No layout break
+✔ Screenshot still captures full page
 
 ---
 
-# ✅ 3️⃣ Code Container Rules
+# 🧪 Validation Checklist
 
-Inside A4:
+After fixes:
 
-```
-white-space: pre;
-overflow: visible;
-```
-
-The page itself handles size.
-
----
-
-# ✅ 4️⃣ Fix Save as PNG
-
-## Expected Flow
-
-Click Save →
-
-1. Capture DOM
-2. Convert to PNG
-3. Send base64 to extension
-4. Open save dialog
-5. Write file
-
----
-
-## Debug Checklist
-
-Confirm:
-
-* Capture function returns image
-* postMessage sent with image
-* Extension receives message
-* showSaveDialog executes
-* File write completes
-
-Add logging at each step.
-
----
-
-# ✅ 5️⃣ Screenshot Target
-
-Important:
-
-Capture ONLY the A4 container
-NOT the whole webview
-
----
-
-# 🧪 Acceptance Criteria
-
-✔ White A4 page visible
-✔ Code sits inside document layout
-✔ Page expands with long lines
-✔ No wrapping
 ✔ Save dialog opens
-✔ PNG saved correctly
-✔ Screenshot matches preview
+✔ PNG saved successfully
+✔ Clipboard paste inserts image
+✔ Large previews scroll smoothly
+✔ Screenshot includes full page
+✔ No console errors
 
 ---
 
 # 🏁 Final Requirement
 
-The preview must look like a printable code document ready for export.
+Exporting and copying screenshots must feel instant, reliable, and seamless.
+
+No clicks should fail silently.
 
 ---
 

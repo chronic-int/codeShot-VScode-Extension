@@ -62,15 +62,23 @@ class CodeShotPanel {
         this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
         this._panel.webview.onDidReceiveMessage(message => {
-            console.log(`[CodeShot] Extension received command: ${message.command}`);
-            switch (message.command) {
+            const type = message.type || message.command;
+            console.log(`[CodeShot] Extension received command: ${type}`);
+            // v0.0.7 Diagnostics: Immediate confirmation
+            if (type !== 'notify' && type !== 'ready') {
+                vscode.window.showInformationMessage(`CodeShot: Extension received '${type}' command.`);
+            }
+            switch (type) {
                 case 'ready':
                     if (this._lastPayload) {
                         this.update(this._lastPayload);
                     }
                     break;
-                case 'capture':
-                    this._handleCapture(message.data);
+                case 'save':
+                    this._handleCapture(message.image, 'save');
+                    break;
+                case 'copy':
+                    this._handleCapture(message.image, 'copy');
                     break;
                 case 'notify':
                     vscode.window.showInformationMessage(message.text);
@@ -78,6 +86,11 @@ class CodeShotPanel {
                 case 'error':
                     vscode.window.showErrorMessage(message.text);
                     break;
+                case 'capture':
+                    this._handleCapture(message.data.imageBase64, message.data.action);
+                    break;
+                default:
+                    console.warn('[CodeShot] Unknown message type:', message);
             }
         }, null, this._disposables);
     }
@@ -87,21 +100,23 @@ class CodeShotPanel {
             this._panel.webview.postMessage({ command: 'update', payload });
         }
     }
-    async _handleCapture(data) {
-        console.log(`[CodeShot] _handleCapture received. Action: ${data.action}, Data length: ${data.imageBase64.length}`);
-        const statusMessage = data.action === 'save' ? 'Converting image for saving...' : 'Converting image for copy...';
+    async _handleCapture(image, action) {
+        if (!image) {
+            vscode.window.showErrorMessage('Capture failed: No image data received.');
+            return;
+        }
+        console.log(`[CodeShot] _handleCapture received. Action: ${action}, Data length: ${image.length}`);
+        const statusMessage = action === 'save' ? 'Processing image for saving...' : 'Processing image for copy...';
         const statusBar = vscode.window.setStatusBarMessage(`$(sync~spin) CodeShot: ${statusMessage}`);
         try {
-            if (!data.imageBase64 || data.imageBase64.length < 50) {
-                throw new Error('Image data from webview is invalid or empty.');
-            }
-            const base64Data = data.imageBase64.replace(/^data:image\/png;base64,/, "");
+            // v0.0.7 Diagnostics: Buffer creation
+            const base64Data = image.replace(/^data:image\/png;base64,/, "");
             const buffer = Buffer.from(base64Data, 'base64');
-            console.log(`[CodeShot] Buffer generated: ${buffer.length} bytes`);
-            if (data.action === 'copy') {
+            vscode.window.showInformationMessage(`CodeShot: Buffer created (${Math.round(buffer.length / 1024)} KB).`);
+            if (action === 'copy') {
                 await this._handleCopyFallback(buffer);
             }
-            else if (data.action === 'save') {
+            else {
                 await this._saveImage(buffer);
             }
         }
@@ -118,7 +133,8 @@ class CodeShotPanel {
             try {
                 const tempPath = vscode.Uri.joinPath(this._context.globalStorageUri, 'temp_clipboard.png');
                 await vscode.workspace.fs.createDirectory(this._context.globalStorageUri);
-                await vscode.workspace.fs.writeFile(tempPath, buffer);
+                // v0.0.7: IO Hardening - Explicit Uint8Array
+                await vscode.workspace.fs.writeFile(tempPath, new Uint8Array(buffer));
                 const cp = require('child_process');
                 const command = `PowerShell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('${tempPath.fsPath.replace(/'/g, "''")}'))"`;
                 cp.exec(command, (err) => {
@@ -137,37 +153,39 @@ class CodeShotPanel {
             }
         }
         else {
-            vscode.window.showWarningMessage('Clipboard fallback is currently only supported on Windows.');
+            vscode.window.showWarningMessage('Clipboard image copy is currently optimized for Windows.');
         }
     }
     async _saveImage(buffer) {
-        console.log('[CodeShot] Opening Save Dialog...');
+        // v0.0.7 Diagnostics: Opening Save Dialog
+        vscode.window.showInformationMessage('CodeShot: Opening Save Dialog...');
         const options = {
             defaultUri: vscode.Uri.file('codeshot.png'),
-            filters: {
-                'Images': ['png']
-            },
+            filters: { 'Images': ['png'] },
             title: 'Save Code Screenshot'
         };
         const fileUri = await vscode.window.showSaveDialog(options);
-        if (!fileUri) {
-            console.log('[CodeShot] Save dialog dismissed');
-            return;
+        if (fileUri) {
+            try {
+                // v0.0.7: IO Hardening - Explicit Uint8Array
+                const uint8 = new Uint8Array(buffer);
+                vscode.window.showInformationMessage(`CodeShot: Writing ${Math.round(uint8.length / 1024)} KB to disk...`);
+                await vscode.workspace.fs.writeFile(fileUri, uint8);
+                vscode.window.showInformationMessage(`Screenshot saved to ${fileUri.fsPath}`);
+            }
+            catch (error) {
+                console.error('[CodeShot] File write failed:', error);
+                vscode.window.showErrorMessage(`Failed to save image: ${error instanceof Error ? error.message : String(error)}`);
+            }
         }
-        try {
-            await vscode.workspace.fs.writeFile(fileUri, buffer);
-            console.log('[CodeShot] Success: Image saved to', fileUri.fsPath);
-            vscode.window.showInformationMessage(`Screenshot saved to ${fileUri.fsPath}`);
-        }
-        catch (error) {
-            console.error('[CodeShot] Disk write failed:', error);
-            vscode.window.showErrorMessage(`Failed to save image: ${error instanceof Error ? error.message : String(error)}`);
+        else {
+            console.log('[CodeShot] Save dialog was cancelled.');
+            vscode.window.showInformationMessage('CodeShot: Save cancelled.');
         }
     }
     _getHtmlForWebview(webview) {
         const layoutCss = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'layout', 'layout.css'));
-        const rendererJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'dist', 'renderer.js'));
-        const captureJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'dist', 'capture.js'));
+        const mainJs = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'webview', 'dist', 'main.js'));
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -186,13 +204,12 @@ class CodeShotPanel {
         </div>
     </div>
 
-    <div style="position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px;">
-        <button id="copy-btn">Copy to Clipboard</button>
-        <button id="save-btn">Save as PNG</button>
+    <div id="action-bar">
+        <button id="copy-btn" class="btn btn-secondary">Copy to Clipboard</button>
+        <button id="save-btn" class="btn btn-primary">Save as PNG</button>
     </div>
 
-    <script src="${rendererJs}"></script>
-    <script src="${captureJs}"></script>
+    <script src="${mainJs}"></script>
 </body>
 </html>`;
     }

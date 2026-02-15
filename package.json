@@ -2,7 +2,7 @@
   "name": "codeshot",
   "displayName": "CodeShot",
   "description": "Capture beautiful code screenshots directly from VS Code.",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "publisher": "chronic-int",
   "engines": {
     "vscode": "^1.85.0"
@@ -40,7 +40,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./ && npm run build:webview",
     "watch": "tsc -watch -p ./",
-    "build:webview": "esbuild webview/renderer/index.ts --bundle --minify --platform=browser --outfile=webview/dist/renderer.js && esbuild webview/capture/index.ts --bundle --minify --platform=browser --outfile=webview/dist/capture.js",
+    "build:webview": "esbuild webview/main.ts --bundle --minify --platform=browser --outfile=webview/dist/main.js",
     "lint": "eslint extension shared --ext ts"
   },
   "devDependencies": {

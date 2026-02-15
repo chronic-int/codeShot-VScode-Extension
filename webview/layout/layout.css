@@ -19,11 +19,12 @@ body {
 #preview-container {
     background: var(--vscode-editor-background);
     padding: 24px;
-    min-height: 100vh;
+    height: 100vh;
     overflow: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .a4-page {
@@ -148,4 +149,65 @@ pre {
 
 .token.entity {
     cursor: help;
+}
+
+/* Action Bar & Premium Buttons */
+#action-bar {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 25px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    outline: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #6e8efb 0%, #a777e3 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(110, 142, 251, 0.4);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(110, 142, 251, 0.6);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+    border: none;
+}
+
+.btn-secondary:hover {
+    box-shadow: 0 6px 20px rgba(17, 153, 142, 0.6);
+    transform: translateY(-2px);
 }
