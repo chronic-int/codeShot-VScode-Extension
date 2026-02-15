@@ -2,46 +2,96 @@ import * as htmlToImage from 'html-to-image';
 
 const vscode = acquireVsCodeApi();
 
-function initCapture() {
-    console.log('[CodeShot] Capture script initializing...');
-
-    const copyBtn = document.getElementById('copy-btn');
-    const saveBtn = document.getElementById('save-btn');
-    const screenshotTarget = document.getElementById('screenshot-target');
-
-    console.log('[CodeShot] Elements found:', {
-        copyBtn: !!copyBtn,
-        saveBtn: !!saveBtn,
-        screenshotTarget: !!screenshotTarget
-    });
-
-    if (!copyBtn || !saveBtn || !screenshotTarget) {
-        console.warn('[CodeShot] Required elements not found. Will retry in 100ms.');
-        setTimeout(initCapture, 100);
-        return;
+/**
+ * Captures the screenshot target and returns the DataURL.
+ * Includes explicit error handling and status updates.
+ */
+async function captureScreenshot(): Promise<string | null> {
+    const target = document.getElementById('screenshot-target');
+    if (!target) {
+        console.error('[CodeShot] Screenshot target #screenshot-target not found');
+        vscode.postMessage({ command: 'error', text: 'Critical Error: Capture target not found.' });
+        return null;
     }
 
-    copyBtn.addEventListener('click', async () => {
-        console.log('[CodeShot] Copy button clicked');
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = 'Capturing...';
+    // Ensure dimensions are valid
+    if (target.offsetWidth === 0 || target.offsetHeight === 0) {
+        console.warn('[CodeShot] Target has 0 dimensions. Code might not be rendered yet.');
+        return null;
+    }
 
-        try {
-            const dataUrl = await htmlToImage.toPng(screenshotTarget, { pixelRatio: 2 });
-            console.log('[CodeShot] Capture successful, length:', dataUrl.length);
+    try {
+        console.log('[CodeShot] Starting capture...', {
+            width: target.offsetWidth,
+            height: target.offsetHeight
+        });
 
-            // Try to copy to clipboard directly in webview
-            const response = await fetch(dataUrl);
-            const blob = await response.blob();
+        const dataUrl = await htmlToImage.toPng(target, {
+            pixelRatio: 2,
+            skipAutoScale: true,
+            cacheBust: true
+        });
 
+        if (!dataUrl || dataUrl.length < 100) {
+            throw new Error('Generated image data is empty or invalid.');
+        }
+
+        console.log('[CodeShot] Capture successful. Data size:', dataUrl.length);
+        return dataUrl;
+    } catch (err) {
+        console.error('[CodeShot] html-to-image failed:', err);
+        vscode.postMessage({ command: 'error', text: 'Image capture failed: ' + (err as Error).message });
+        return null;
+    }
+}
+
+async function handleSave() {
+    const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
+    if (!saveBtn) return;
+
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = 'Preparing...';
+    saveBtn.disabled = true;
+
+    try {
+        const dataUrl = await captureScreenshot();
+        if (dataUrl) {
+            vscode.postMessage({
+                command: 'capture',
+                data: {
+                    imageBase64: dataUrl,
+                    action: 'save'
+                }
+            });
+        }
+    } finally {
+        saveBtn.innerText = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+async function handleCopy() {
+    const copyBtn = document.getElementById('copy-btn') as HTMLButtonElement;
+    if (!copyBtn) return;
+
+    const originalText = copyBtn.innerText;
+    copyBtn.innerText = 'Capturing...';
+    copyBtn.disabled = true;
+
+    try {
+        const dataUrl = await captureScreenshot();
+        if (dataUrl) {
+            // Try native clipboard first (fastest)
             try {
+                const response = await fetch(dataUrl);
+                const blob = await response.blob();
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]);
                 console.log('[CodeShot] Native clipboard write successful');
                 vscode.postMessage({ command: 'notify', text: 'Image copied to clipboard!' });
-            } catch (clipboardErr) {
-                console.warn('[CodeShot] Webview clipboard API failed, falling back to extension:', clipboardErr);
+            } catch (err) {
+                console.warn('[CodeShot] Native clipboard failed, falling back to extension:', err);
                 vscode.postMessage({
                     command: 'capture',
                     data: {
@@ -50,44 +100,47 @@ function initCapture() {
                     }
                 });
             }
-        } catch (err) {
-            console.error('[CodeShot] Capture error:', err);
-            vscode.postMessage({ command: 'error', text: 'Failed to capture image: ' + (err as Error).message });
-        } finally {
-            copyBtn.innerText = originalText;
+        }
+    } finally {
+        copyBtn.innerText = originalText;
+        copyBtn.disabled = false;
+    }
+}
+
+function init() {
+    const copyBtn = document.getElementById('copy-btn');
+    const saveBtn = document.getElementById('save-btn');
+
+    if (!copyBtn || !saveBtn) {
+        console.warn('[CodeShot] Buttons not found, retrying...');
+        setTimeout(init, 100);
+        return;
+    }
+
+    copyBtn.addEventListener('click', handleCopy);
+    saveBtn.addEventListener('click', handleSave);
+
+    // Shortcuts
+    window.addEventListener('keydown', (e) => {
+        const isMod = e.ctrlKey || e.metaKey;
+        if (isMod && e.key === 's') {
+            e.preventDefault();
+            handleSave();
+        } else if (isMod && e.key === 'c') {
+            if (window.getSelection()?.toString() === '') {
+                e.preventDefault();
+                handleCopy();
+            }
         }
     });
 
-    saveBtn.addEventListener('click', async () => {
-        console.log('[CodeShot] Save button clicked');
-        const originalText = saveBtn.innerText;
-        saveBtn.innerText = 'Preparing...';
-
-        try {
-            const dataUrl = await htmlToImage.toPng(screenshotTarget, { pixelRatio: 2 });
-            console.log('[CodeShot] Capture successful, sending to extension. Size:', dataUrl.length);
-            vscode.postMessage({
-                command: 'capture',
-                data: {
-                    imageBase64: dataUrl,
-                    action: 'save'
-                }
-            });
-        } catch (err) {
-            console.error('[CodeShot] Capture error:', err);
-            vscode.postMessage({ command: 'error', text: 'Failed to capture image: ' + (err as Error).message });
-        } finally {
-            saveBtn.innerText = originalText;
-        }
-    });
-
-    console.log('[CodeShot] Capture listeners attached successfully.');
+    console.log('[CodeShot] Capture module initialized (v0.0.5)');
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCapture);
+    document.addEventListener('DOMContentLoaded', init);
 } else {
-    initCapture();
+    init();
 }
 
 declare function acquireVsCodeApi(): any;

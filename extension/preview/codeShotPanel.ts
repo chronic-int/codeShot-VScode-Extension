@@ -38,10 +38,9 @@ export class CodeShotPanel {
 
         this._panel.webview.onDidReceiveMessage(
             message => {
-                console.log('Extension received message:', message.command);
+                console.log(`[CodeShot] Extension received command: ${message.command}`);
                 switch (message.command) {
                     case 'ready':
-                        console.log('Webview is ready, resending last payload');
                         if (this._lastPayload) {
                             this.update(this._lastPayload);
                         }
@@ -65,56 +64,68 @@ export class CodeShotPanel {
     public update(payload: PreviewPayload) {
         this._lastPayload = payload;
         if (this._panel) {
-            console.log('Sending update to webview:', payload.language);
             this._panel.webview.postMessage({ command: 'update', payload });
         }
     }
 
     private async _handleCapture(data: { imageBase64: string, action: 'copy' | 'save' }) {
-        console.log(`[CodeShot] _handleCapture action: ${data.action}, data length: ${data.imageBase64.length}`);
-        const base64Data = data.imageBase64.replace(/^data:image\/png;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        console.log(`[CodeShot] Buffer length: ${buffer.length}`);
+        console.log(`[CodeShot] _handleCapture received. Action: ${data.action}, Data length: ${data.imageBase64.length}`);
 
-        if (data.action === 'copy') {
-            try {
-                // Since VS Code doesn't have a direct image clipboard API, 
-                // and if the webview copy failed, we use a platform-specific fallback.
-                // For Windows, we can use PowerShell.
-                if (process.platform === 'win32') {
-                    const tempPath = vscode.Uri.joinPath(this._context.globalStorageUri, 'temp_capture.png');
-                    await vscode.workspace.fs.createDirectory(this._context.globalStorageUri);
-                    await vscode.workspace.fs.writeFile(tempPath, buffer);
+        const statusMessage = data.action === 'save' ? 'Converting image for saving...' : 'Converting image for copy...';
+        const statusBar = vscode.window.setStatusBarMessage(`$(sync~spin) CodeShot: ${statusMessage}`);
 
-                    const cp = require('child_process');
-                    // Ensure path is quoted and use a more robust script
-                    const command = `PowerShell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('${tempPath.fsPath.replace(/'/g, "''")}'))"`;
-
-                    console.log('[CodeShot] Executing PowerShell copy...');
-                    cp.exec(command, (err: any) => {
-                        if (err) {
-                            console.error('[CodeShot] PowerShell Copy failed:', err);
-                            vscode.window.showErrorMessage('Failed to copy image to clipboard.');
-                        } else {
-                            console.log('[CodeShot] PowerShell Copy successful');
-                            vscode.window.showInformationMessage('Image copied to clipboard!');
-                        }
-                    });
-                } else {
-                    vscode.window.showWarningMessage('Copy to clipboard is only supported in the preview panel on this platform.');
-                }
-            } catch (err) {
-                console.error('Copy process error:', err);
-                vscode.window.showErrorMessage('Failed to process image for copy.');
+        try {
+            if (!data.imageBase64 || data.imageBase64.length < 50) {
+                throw new Error('Image data from webview is invalid or empty.');
             }
-        } else if (data.action === 'save') {
-            console.log('[CodeShot] Extension initiating save process');
-            await this._saveImage(buffer);
+
+            const base64Data = data.imageBase64.replace(/^data:image\/png;base64,/, "");
+            const buffer = Buffer.from(base64Data, 'base64');
+            console.log(`[CodeShot] Buffer generated: ${buffer.length} bytes`);
+
+            if (data.action === 'copy') {
+                await this._handleCopyFallback(buffer);
+            } else if (data.action === 'save') {
+                await this._saveImage(buffer);
+            }
+        } catch (err) {
+            console.error('[CodeShot] Capture handling failed:', err);
+            vscode.window.showErrorMessage(`Capture process failed: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            statusBar.dispose();
+        }
+    }
+
+    private async _handleCopyFallback(buffer: Buffer) {
+        if (process.platform === 'win32') {
+            try {
+                const tempPath = vscode.Uri.joinPath(this._context.globalStorageUri, 'temp_clipboard.png');
+                await vscode.workspace.fs.createDirectory(this._context.globalStorageUri);
+                await vscode.workspace.fs.writeFile(tempPath, buffer);
+
+                const cp = require('child_process');
+                const command = `PowerShell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('${tempPath.fsPath.replace(/'/g, "''")}'))"`;
+
+                cp.exec(command, (err: any) => {
+                    if (err) {
+                        console.error('[CodeShot] PowerShell copy failed:', err);
+                        vscode.window.showErrorMessage('Failed to copy to clipboard.');
+                    } else {
+                        vscode.window.showInformationMessage('Screenshot copied to clipboard!');
+                    }
+                });
+            } catch (err) {
+                console.error('[CodeShot] Clipboard fallback preparation failed:', err);
+                vscode.window.showErrorMessage('Failed to prepare clipboard data.');
+            }
+        } else {
+            vscode.window.showWarningMessage('Clipboard fallback is currently only supported on Windows.');
         }
     }
 
     private async _saveImage(buffer: Buffer) {
-        console.log('[CodeShot] _saveImage: Showing Save Dialog');
+        console.log('[CodeShot] Opening Save Dialog...');
+
         const options: vscode.SaveDialogOptions = {
             defaultUri: vscode.Uri.file('codeshot.png'),
             filters: {
@@ -124,13 +135,19 @@ export class CodeShotPanel {
         };
 
         const fileUri = await vscode.window.showSaveDialog(options);
-        if (fileUri) {
-            try {
-                await vscode.workspace.fs.writeFile(fileUri, buffer);
-                vscode.window.showInformationMessage(`Screenshot saved to ${fileUri.fsPath}`);
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to save screenshot: ${error}`);
-            }
+
+        if (!fileUri) {
+            console.log('[CodeShot] Save dialog dismissed');
+            return;
+        }
+
+        try {
+            await vscode.workspace.fs.writeFile(fileUri, buffer);
+            console.log('[CodeShot] Success: Image saved to', fileUri.fsPath);
+            vscode.window.showInformationMessage(`Screenshot saved to ${fileUri.fsPath}`);
+        } catch (error) {
+            console.error('[CodeShot] Disk write failed:', error);
+            vscode.window.showErrorMessage(`Failed to save image: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
