@@ -74,3 +74,5 @@ This project is licensed under the ISC License.
 ---
 
 Built with ❤️ for developers who love clean documentation.
+
+Download: https://open-vsx.org/api/chronic-int/codeshot/0.1.7/file/chronic-int.codeshot-0.1.7.vsix
