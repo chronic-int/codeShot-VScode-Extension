@@ -2,7 +2,7 @@
   "name": "codeshot",
   "displayName": "CodeShot",
   "description": "Capture beautiful code screenshots directly from VS Code.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "chronic-int",
   "license": "ISC",
   "icon": "assets/logo.png",

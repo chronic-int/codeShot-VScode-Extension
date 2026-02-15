@@ -20,4 +20,8 @@ vsc-extension-quickstart.md
 node_modules/**
 !node_modules/prismjs/**
 !node_modules/shiki/**
+!node_modules/ansi-sequence-parser/**
+!node_modules/jsonc-parser/**
+!node_modules/vscode-oniguruma/**
+!node_modules/vscode-textmate/**
 !node_modules/html-to-image/**
