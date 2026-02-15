@@ -1,146 +1,126 @@
-# 🧩 CodeShot — Output Pipeline & Large Page Scroll Fix
+# 🎨 CodeShot — Syntax Color Fidelity Fix (Shiki)
 
 ## 🎯 Objective
 
-Fix the screenshot export pipeline and improve usability when the A4 page becomes very large.
+Ensure all programming languages render with fully visible and distinct syntax colors so screenshots remain readable and visually consistent.
 
-The user must be able to:
-
-* Save PNG reliably
-* Copy image to clipboard
-* Scroll when preview is larger than viewport
+Currently some tokens (e.g. strings, CSS values, attributes) appear gray and low contrast, making them hard to see in exported PNG files.
 
 ---
 
-# 🐞 Current Issues
+# 🐞 Problem
 
-1. Save as PNG button does not save file
-2. Copy to Clipboard does not copy image
-3. Large A4 pages overflow without proper scroll
+Shiki is rendering certain tokens with neutral or gray colors because:
 
----
+* Theme is not fully applied
+* Token styles are missing
+* Foreground color fallback is overriding token colors
 
-# ✅ 1️⃣ Fix Save as PNG Pipeline
-
-## Required Flow
-
-1. User clicks **Save as PNG**
-2. Webview captures A4 container
-3. PNG base64 generated
-4. Message sent to extension
-5. Extension opens Save dialog
-6. File written successfully
+This results in low visibility in screenshots.
 
 ---
 
-## Implementation Requirements
+# ✅ Expected Result
 
-### Webview
+All code must display with:
 
-* Ensure capture function returns image
-* Use `postMessage({ type: "save", image })`
+* Distinct token colors
+* Visible strings (e.g. yellow or orange)
+* Visible keywords (e.g. blue)
+* Visible attributes and values
+* Proper contrast against background
 
-### Extension Host
+The output should visually match VS Code editor highlighting.
 
-Must handle message:
+---
+
+# 🛠️ Implementation Fix
+
+## 1️⃣ Ensure Theme is Loaded Explicitly
+
+Do NOT rely on default theme.
+
+Initialize highlighter with explicit theme:
 
 ```
-if (message.type === "save") {
-  const uri = await vscode.window.showSaveDialog(...)
-  await vscode.workspace.fs.writeFile(uri, buffer)
+const highlighter = await getHighlighter({
+  theme: "github-dark" // or vscode-dark-plus equivalent
+})
+```
+
+---
+
+## 2️⃣ Force Token Color Application
+
+When inserting highlighted HTML, ensure no CSS overrides:
+
+```
+.code-container span {
+  color: inherit;
 }
 ```
 
----
-
-## Critical Checks
-
-✔ Ensure image string is not empty
-✔ Ensure message listener exists
-✔ Ensure async write is awaited
-✔ Add error logs
+Remove any rule that sets a global color on code.
 
 ---
 
-# ✅ 2️⃣ Fix Copy to Clipboard
+## 3️⃣ Apply Background and Foreground from Theme
 
-## Expected Behavior
+Container must use:
 
-Clicking copy must place PNG image into system clipboard.
+```
+background: #ffffff;  // A4 requirement
+color: #000000;
+```
+
+Tokens will override this with inline styles from Shiki.
 
 ---
 
-## Implementation
+## 4️⃣ Add Fallback for Missing Token Colors
 
-Must be handled in Extension Host (not Webview):
+If token has no color:
 
-```
-vscode.env.clipboard.writeBuffer(buffer)
-```
-
-Webview sends:
+Apply readable default:
 
 ```
-postMessage({ type: "copy", image })
+.token {
+  color: #333333;
+}
 ```
+
+This prevents invisible text.
 
 ---
 
-## Important
+## 5️⃣ Verify Language Detection
 
-Do NOT use:
-
-❌ navigator.clipboard
-
-It does not support binary image reliably in Webviews.
-
----
-
-# ✅ 3️⃣ Large Page Scroll Behavior
-
-When A4 page becomes larger than viewport:
-
-The preview container must allow scrolling.
-
----
-
-## Layout Rules
-
-Outer container:
+Ensure correct language is passed to Shiki:
 
 ```
-height: 100vh;
-overflow: auto;
+highlighter.codeToHtml(code, { lang })
 ```
 
-A4 page remains centered.
-
-This ensures:
-
-✔ Smooth navigation
-✔ No layout break
-✔ Screenshot still captures full page
+If language is incorrect, tokens become gray.
 
 ---
 
 # 🧪 Validation Checklist
 
-After fixes:
-
-✔ Save dialog opens
-✔ PNG saved successfully
-✔ Clipboard paste inserts image
-✔ Large previews scroll smoothly
-✔ Screenshot includes full page
-✔ No console errors
+✔ Strings appear colored (not gray)
+✔ Keywords are distinct
+✔ CSS properties visible
+✔ HTML attributes visible
+✔ No text blends into background
+✔ PNG output matches preview
 
 ---
 
 # 🏁 Final Requirement
 
-Exporting and copying screenshots must feel instant, reliable, and seamless.
+Every language must remain fully readable and visually rich when exported as PNG.
 
-No clicks should fail silently.
+No syntax element should appear faded or invisible.
 
 ---
 

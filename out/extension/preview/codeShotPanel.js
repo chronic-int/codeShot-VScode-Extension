@@ -35,14 +35,29 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CodeShotPanel = void 0;
 const vscode = __importStar(require("vscode"));
+const shiki_1 = require("shiki");
 class CodeShotPanel {
     _context;
     static currentPanel;
     _panel;
     _disposables = [];
     _lastPayload;
+    _highlighter;
     constructor(_context) {
         this._context = _context;
+    }
+    async _getHighlighter() {
+        if (!this._highlighter) {
+            this._highlighter = await (0, shiki_1.getHighlighter)({
+                theme: 'light-plus',
+                langs: [
+                    'javascript', 'typescript', 'css', 'json',
+                    'python', 'bash', 'markdown', 'html',
+                    'cpp', 'java', 'go', 'rust', 'sql', 'yaml'
+                ]
+            });
+        }
+        return this._highlighter;
     }
     createOrShow() {
         const column = vscode.window.activeTextEditor
@@ -64,7 +79,6 @@ class CodeShotPanel {
         this._panel.webview.onDidReceiveMessage(message => {
             const type = message.type || message.command;
             console.log(`[CodeShot] Extension received command: ${type}`);
-            // v0.0.7 Diagnostics: Immediate confirmation
             if (type !== 'notify' && type !== 'ready') {
                 vscode.window.showInformationMessage(`CodeShot: Extension received '${type}' command.`);
             }
@@ -86,18 +100,61 @@ class CodeShotPanel {
                 case 'error':
                     vscode.window.showErrorMessage(message.text);
                     break;
-                case 'capture':
-                    this._handleCapture(message.data.imageBase64, message.data.action);
-                    break;
                 default:
                     console.warn('[CodeShot] Unknown message type:', message);
             }
         }, null, this._disposables);
     }
-    update(payload) {
+    async update(payload) {
         this._lastPayload = payload;
         if (this._panel) {
-            this._panel.webview.postMessage({ command: 'update', payload });
+            const html = await this._renderCodeToHtml(payload.code, payload.language, payload.startLine);
+            this._panel.webview.postMessage({ command: 'update', html });
+        }
+    }
+    async _renderCodeToHtml(code, language, startLine) {
+        try {
+            const highlighter = await this._getHighlighter();
+            const langMap = {
+                'js': 'javascript',
+                'ts': 'typescript',
+                'py': 'python',
+                'sh': 'bash',
+                'md': 'markdown',
+                'yml': 'yaml'
+            };
+            const lang = langMap[language] || language || 'javascript';
+            const tokenLines = highlighter.codeToThemedTokens(code, lang);
+            let finalHtml = `<pre class="shiki" style="background-color: transparent !important; margin: 0; padding: 0;"><code>`;
+            tokenLines.forEach((line, index) => {
+                const currentLineNumber = startLine + index;
+                let lineContent = '';
+                if (line.length === 0) {
+                    lineContent = '&nbsp;';
+                }
+                else {
+                    line.forEach(token => {
+                        const style = token.color ? `style="color: ${token.color}"` : '';
+                        const content = token.content
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+                        lineContent += `<span ${style}>${content}</span>`;
+                    });
+                }
+                finalHtml += `<div class="line">
+                    <span class="line-number">${currentLineNumber}</span>
+                    <span class="line-content">${lineContent}</span>
+                </div>`;
+            });
+            finalHtml += `</code></pre>`;
+            return finalHtml;
+        }
+        catch (err) {
+            console.error('[CodeShot] Render error:', err);
+            return `<pre><code>${code}</code></pre>`;
         }
     }
     async _handleCapture(image, action) {

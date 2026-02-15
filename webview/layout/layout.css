@@ -79,72 +79,29 @@ pre {
     line-height: 1.5;
 }
 
-/* Syntax Highlighting Colors (PrismJS) - High Contrast for White A4 Page */
-.token.comment,
-.token.prolog,
-.token.doctype,
-.token.cdata {
-    color: #5c6370;
-    font-style: italic;
+/* Shiki Syntax Highlighting Support */
+.shiki {
+    background-color: transparent !important;
+    margin: 0;
+    padding: 0;
 }
 
-.token.namespace {
-    opacity: .8;
+.shiki span {
+    /* Prevent invisible text if a theme color is missing */
+    color: #333333;
 }
 
-.token.string,
-.token.attr-value {
-    color: #032f62;
-}
-
-.token.punctuation,
-.token.operator {
-    color: #24292e;
-}
-
-.token.keyword,
-.token.selector,
-.token.attr-name,
-.token.char,
-.token.builtin,
-.token.inserted {
-    color: #d73a49;
-}
-
-.token.function,
-.token.class-name {
-    color: #6f42c1;
-}
-
-.token.constant,
-.token.boolean,
-.token.number,
-.token.variable,
-.token.property,
-.token.tag,
-.token.symbol,
-.token.deleted {
-    color: #005cc5;
-}
-
-/* Explicit fix for CSS and other grey-ish tokens */
-.token.attr-value,
-.token.atrule,
-.token.keyword {
-    color: #d73a49;
-}
-
-.token.regex,
-.token.important {
-    color: #e36209;
-}
-
-.token.bold {
-    font-weight: bold;
-}
-
-.token.italic {
-    font-style: italic;
+/* Ensure A4 page stays white even if Shiki theme has a background */
+.a4-page {
+    background: #ffffff !important;
+    color: #333333;
+    width: fit-content;
+    min-width: 794px;
+    margin: 0 auto;
+    padding: 40px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .token.entity {

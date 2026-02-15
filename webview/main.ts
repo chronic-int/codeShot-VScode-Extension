@@ -1,60 +1,21 @@
-import * as Prism from 'prismjs';
 import * as htmlToImage from 'html-to-image';
-
-// Load languages
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-markdown';
 
 // SINGLE CALL TO acquireVsCodeApi()
 const vscode = acquireVsCodeApi();
 
 // --- RENDERER LOGIC ---
 
-function renderCode(code: string, language: string, startLine: number, theme: string) {
+function displayCode(html: string) {
     const output = document.getElementById('code-output');
     if (!output) return;
 
-    if (!code) {
+    if (!html) {
         output.innerHTML = '<div style="color: #666; font-style: italic;">Select code in the editor to see preview...</div>';
         return;
     }
 
-    try {
-        const langMap: { [key: string]: string } = {
-            'js': 'javascript',
-            'ts': 'typescript',
-            'py': 'python',
-            'sh': 'bash',
-            'md': 'markdown'
-        };
-        const prismLang = langMap[language] || language || 'javascript';
-        const grammar = Prism.languages[prismLang] || Prism.languages.javascript;
-
-        const highlightedCode = Prism.highlight(code, grammar, prismLang);
-        const lines = highlightedCode.split('\n');
-        let finalHtml = `<pre class="language-${prismLang}"><code>`;
-
-        lines.forEach((line, index) => {
-            const currentLineNumber = startLine + index;
-            const lineContent = line || '&nbsp;';
-            finalHtml += `<div class="line">
-                <span class="line-number">${currentLineNumber}</span>
-                <span class="line-content">${lineContent}</span>
-            </div>`;
-        });
-
-        finalHtml += `</code></pre>`;
-        output.innerHTML = finalHtml;
-        console.log('[CodeShot] Render complete');
-    } catch (err) {
-        console.error('[CodeShot] Render error:', err);
-        output.innerText = code;
-    }
+    output.innerHTML = html;
+    console.log('[CodeShot] Content updated (Host-rendered HTML)');
 }
 
 // --- CAPTURE LOGIC ---
@@ -115,14 +76,13 @@ async function handleCopy() {
 // --- INITIALIZATION ---
 
 function init() {
-    console.log('[CodeShot] main.ts initializing v0.1.0...');
+    console.log('[CodeShot] main.ts initializing v0.1.2 (Host-rendered)...');
 
-    // Message Listener for Updates
+    // Message Listener for pre-rendered HTML
     window.addEventListener('message', (event) => {
         const message = event.data;
         if (message.command === 'update') {
-            const { code, language, startLine, theme } = message.payload;
-            renderCode(code, language, startLine, theme);
+            displayCode(message.html);
         }
     });
 
@@ -140,7 +100,7 @@ function init() {
     });
 
     vscode.postMessage({ command: 'ready' });
-    vscode.postMessage({ type: 'notify', text: 'CodeShot: Unified Module Ready (v0.1.0)' });
+    vscode.postMessage({ type: 'notify', text: 'CodeShot: Display Module Ready (v0.1.2)' });
 }
 
 if (document.readyState === 'loading') {
